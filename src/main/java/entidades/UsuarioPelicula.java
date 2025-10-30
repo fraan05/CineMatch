@@ -1,6 +1,6 @@
 package entidades;
 
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
 
 public class UsuarioPelicula {
 	
@@ -8,7 +8,7 @@ public class UsuarioPelicula {
 	private String alias;
 	private int peliculaId;
 	private double valoracion;
-	private LocalDateTime fechaRegistro;
+	private Timestamp fechaRegistro;
 	
 	public UsuarioPelicula() {
 		super();
@@ -46,11 +46,11 @@ public class UsuarioPelicula {
 		this.valoracion = valoracion;
 	}
 
-	public LocalDateTime getFechaRegistro() {
+	public Timestamp getFechaRegistro() {
 		return fechaRegistro;
 	}
 
-	public void setFechaRegistro(LocalDateTime fechaRegistro) {
+	public void setFechaRegistro(Timestamp fechaRegistro) {
 		this.fechaRegistro = fechaRegistro;
 	}
 

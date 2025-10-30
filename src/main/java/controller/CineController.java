@@ -11,15 +11,13 @@ import jakarta.servlet.http.*;
 
 
 
-public class CineController extends HttpServlet{
-	
-	private static final long serialVersionUID = 1L;
-    private CineService service;
-	
+public class CineController extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+    private CineService cineService;
+
     @Override
     public void init() throws ServletException {
-        super.init();
-        service = new CineService();
+        cineService = new CineService();
     }
 
     @Override
@@ -27,113 +25,90 @@ public class CineController extends HttpServlet{
             throws ServletException, IOException {
 
         request.setCharacterEncoding("UTF-8");
-        String operacion = request.getParameter("operacion");
 
         String alias = request.getParameter("alias");
         String genero = request.getParameter("genero");
-        String valoracionStr = request.getParameter("valoracion");
+        String operacion = request.getParameter("operacion");
         double valoracion = 0;
-        if (valoracionStr != null && !valoracionStr.isEmpty()) {
-            try {
-                valoracion = Double.parseDouble(valoracionStr);
-            } catch (NumberFormatException e) {
-                valoracion = 0;
-            }
+        try {
+            valoracion = Double.parseDouble(request.getParameter("valoracion"));
+        } catch (Exception e) {
+            valoracion = 0;
         }
 
-        // PRG → Redirigir según operación
-        HttpSession sesion = request.getSession();
+        HttpSession session = request.getSession();
+        String redirectUrl = "CineController?view=home"; // vista por defecto
 
         switch (operacion) {
-            case "HOME":
-                response.sendRedirect(request.getContextPath() + "/cine?view=home");
-                break;
 
             case "REGISTRAR":
-                if (alias != null && !alias.isEmpty() && valoracion > 0 && genero != null) {
-                    service.registrarPreferencia(alias, genero, valoracion);
-                    sesion.setAttribute("mensaje", "✅ Preferencia registrada correctamente.");
-                } else {
-                    sesion.setAttribute("mensaje", "⚠️ Datos incompletos. No se registró la preferencia.");
-                }
-                response.sendRedirect(request.getContextPath() + "/cine?view=home");
+                cineService.registrarPreferencia(alias, genero, valoracion);
+                session.setAttribute("mensaje", "Preferencia registrada correctamente.");
+                redirectUrl = "CineController?view=home";
                 break;
 
             case "RECOMENDAR":
-                if (genero != null) {
-                    Pelicula recomendada = service.recomendarPorGenero(genero);
-                    sesion.setAttribute("recomendada", recomendada);
-                    sesion.setAttribute("generoSel", genero);
-                }
-                response.sendRedirect(request.getContextPath() + "/cine?view=home");
+                Pelicula recomendada = cineService.recomendarPorGenero(genero);
+                session.setAttribute("recomendada", recomendada);
+                redirectUrl = "CineController?view=home";
                 break;
 
             case "CONSULTAR_HISTORIAL":
-                if (alias != null && !alias.isEmpty()) {
-                    List<UsuarioPelicula> historial = service.consultarHistorial(alias);
-                    sesion.setAttribute("historial", historial);
-                    sesion.setAttribute("aliasSel", alias);
-                    response.sendRedirect(request.getContextPath() + "/cine?view=historial");
-                } else {
-                    sesion.setAttribute("mensaje", "⚠️ Introduce un alias para consultar tu historial.");
-                    response.sendRedirect(request.getContextPath() + "/cine?view=home");
-                }
+                List<UsuarioPelicula> historial = cineService.consultarHistorial(alias);
+                session.setAttribute("historial", historial);
+                redirectUrl = "CineController?view=historial";
                 break;
 
             case "BORRAR_HISTORIAL":
-                if (alias != null && !alias.isEmpty()) {
-                    int borradas = service.borrarHistorial(alias);
-                    sesion.setAttribute("mensaje", "🗑️ " + borradas + " valoraciones eliminadas.");
-                }
-                response.sendRedirect(request.getContextPath() + "/cine?view=home");
+                cineService.borrarHistorial(alias);
+                session.setAttribute("mensaje", "Historial borrado correctamente.");
+                redirectUrl = "CineController?view=home";
                 break;
 
             case "TOP_PELICULAS":
-                List<Pelicula> top = service.obtenerTopPeliculas();
-                sesion.setAttribute("topPeliculas", top);
-                response.sendRedirect(request.getContextPath() + "/cine?view=top");
+                List<Pelicula> top = cineService.obtenerTopPeliculas();
+                session.setAttribute("top", top);
+                redirectUrl = "CineController?view=top";
                 break;
 
+            case "HOME":
             default:
-                response.sendRedirect(request.getContextPath() + "/cine?view=home");
+                redirectUrl = "CineController?view=home";
                 break;
         }
+
+
+        response.sendRedirect(redirectUrl);
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        HttpSession session = request.getSession();
         String view = request.getParameter("view");
-        HttpSession sesion = request.getSession();
+        String destino = "/WEB-INF/views/home.jsp"; // vista por defecto
 
-        // Pasar mensajes o datos desde la sesión al request y limpiar
-        if (sesion.getAttribute("mensaje") != null) {
-            request.setAttribute("mensaje", sesion.getAttribute("mensaje"));
-            sesion.removeAttribute("mensaje");
-        }
+        if (view == null) view = "home";
 
-        RequestDispatcher rd;
-
-        switch (view != null ? view : "home") {
-            case "historial":
-                request.setAttribute("historial", sesion.getAttribute("historial"));
-                request.setAttribute("aliasSel", sesion.getAttribute("aliasSel"));
-                rd = request.getRequestDispatcher("/WEB-INF/views/historial.jsp");
+        switch (view) {
+            case "HISTORIAL":
+                request.setAttribute("historial", session.getAttribute("historial"));
+                destino = "/WEB-INF/views/historial.jsp";
                 break;
 
-            case "top":
-                request.setAttribute("topPeliculas", sesion.getAttribute("topPeliculas"));
-                rd = request.getRequestDispatcher("/WEB-INF/views/top.jsp");
+            case "TOP":
+                request.setAttribute("top", session.getAttribute("top"));
+                destino = "/WEB-INF/views/top.jsp";
                 break;
 
             default:
-                request.setAttribute("recomendada", sesion.getAttribute("recomendada"));
-                request.setAttribute("generoSel", sesion.getAttribute("generoSel"));
-                rd = request.getRequestDispatcher("/WEB-INF/views/home.jsp");
+                request.setAttribute("mensaje", session.getAttribute("mensaje"));
+                request.setAttribute("recomendada", session.getAttribute("recomendada"));
+                destino = "/WEB-INF/views/home.jsp";
                 break;
         }
 
-        rd.forward(request, response);
+        getServletContext().getRequestDispatcher(destino).forward(request, response);
     }
 }
